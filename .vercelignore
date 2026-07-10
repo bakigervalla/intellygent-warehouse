@@ -1,0 +1,10 @@
+# Upload only what the deployment needs: build/web, api/, vercel.json
+*
+!build
+build/*
+!build/web
+!build/web/**
+!api
+!api/**
+!vercel.json
+!package.json
