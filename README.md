@@ -79,12 +79,16 @@ lib/
 
 ## Security: the key never ships
 
-The web deployment uses a **Vercel serverless proxy**: the Flutter bundle is built with `OPENAI_BASE_URL=/api/openai/v1` and contains **no API key**. The key lives encrypted in a Vercel env var; the proxy forwards exactly one endpoint (`chat/completions`) and nothing else.
+The web deployment uses a **Vercel serverless proxy**: the Flutter bundle is built with `OPENAI_BASE_URL=/api/openai/v1` and contains **no API key**. The keys live encrypted in Vercel env vars; the proxy forwards exactly one endpoint (`chat/completions`) and nothing else.
+
+**Provider order: NVIDIA NIM (default) → OpenAI (fallback).** The proxy first calls NVIDIA's OpenAI-compatible vision endpoint (`integrate.api.nvidia.com`, model `NVIDIA_MODEL`, default `meta/llama-3.2-90b-vision-instruct`), then falls back to OpenAI (`OPENAI_MODEL`, default `gpt-4o`) whenever NVIDIA errors or returns output the strict client parser can't read (e.g. oversized inline images or non-JSON prose).
 
 ```
-iPhone PWA ──POST /api/openai/v1/chat/completions──▶ Vercel function ──Bearer key──▶ OpenAI
-                     (no key in client)                (key in env var)
+iPhone PWA ──POST /api/openai/v1/chat/completions──▶ Vercel function ──┬─ NVIDIA NIM (primary)
+                     (no key in client)                (keys in env)    └─ OpenAI (fallback)
 ```
+
+Required Vercel env vars (production): `NVIDIA_API_KEY`, `OPENAI_API_KEY`, and optionally `NVIDIA_MODEL`.
 
 ## Getting started
 

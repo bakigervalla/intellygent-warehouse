@@ -5,8 +5,10 @@ deploys static build + api/ proxy to Vercel.
 
 .PREREQS (one-time)
   1. vercel login
-  2. After first deploy: set the key server-side:
+  2. Set the provider keys server-side (the proxy tries NVIDIA first, then OpenAI):
+       vercel env add NVIDIA_API_KEY production
        vercel env add OPENAI_API_KEY production
+       vercel env add NVIDIA_MODEL   production   # optional, default meta/llama-3.2-90b-vision-instruct
      then redeploy (rerun this script).
 
 .USAGE
