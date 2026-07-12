@@ -81,14 +81,18 @@ lib/
 
 The web deployment uses a **Vercel serverless proxy**: the Flutter bundle is built with `OPENAI_BASE_URL=/api/openai/v1` and contains **no API key**. The keys live encrypted in Vercel env vars; the proxy forwards exactly one endpoint (`chat/completions`) and nothing else.
 
-**Provider order: NVIDIA NIM (default) → OpenAI (fallback).** The proxy first calls NVIDIA's OpenAI-compatible vision endpoint (`integrate.api.nvidia.com`, model `NVIDIA_MODEL`, default `meta/llama-3.2-90b-vision-instruct`), then falls back to OpenAI (`OPENAI_MODEL`, default `gpt-4o`) whenever NVIDIA errors or returns output the strict client parser can't read (e.g. oversized inline images or non-JSON prose).
+**Provider is selected manually via `LLM_PROVIDER` (`nvidia` default, or `openai`) — no automatic fallback.** The proxy calls only the selected provider and returns its response verbatim. With `LLM_PROVIDER=nvidia` it hits NVIDIA's OpenAI-compatible vision endpoint (`integrate.api.nvidia.com`, model `NVIDIA_MODEL`, default `meta/llama-3.2-90b-vision-instruct`), rewriting the model and dropping `response_format` (NVIDIA VLMs reject it). With `LLM_PROVIDER=openai` it forwards the request unchanged (`OPENAI_MODEL`, default `gpt-4o`). Switch providers from the Vercel dashboard and redeploy.
 
 ```
-iPhone PWA ──POST /api/openai/v1/chat/completions──▶ Vercel function ──┬─ NVIDIA NIM (primary)
-                     (no key in client)                (keys in env)    └─ OpenAI (fallback)
+iPhone PWA ──POST /api/openai/v1/chat/completions──▶ Vercel function ──▶ LLM_PROVIDER
+                     (no key in client)                (keys in env)      (nvidia | openai)
 ```
 
-Required Vercel env vars (production): `NVIDIA_API_KEY`, `OPENAI_API_KEY`, and optionally `NVIDIA_MODEL`.
+Required Vercel env vars (production): `LLM_PROVIDER`, plus the matching key (`NVIDIA_API_KEY` or `OPENAI_API_KEY`), and optionally `NVIDIA_MODEL`.
+
+### Access gate
+
+Set a static password to gate the web app: build with `--dart-define=APP_PASSWORD=...` (the deploy script's `-Password` flag), or leave it empty for no gate. Mirrors intelly-procurement's `APP_PASSWORD`. This is a **client-side** gate — the value ships in the web bundle, so it deters casual access but is not a server-verified secret. A valid unlock persists `APP_SESSION_DAYS` (default 7) via local storage.
 
 ## Getting started
 
@@ -102,6 +106,16 @@ flutter run --dart-define=OPENAI_API_KEY=sk-your-key
 # Web/PWA via key-holding proxy (after `vercel login` + setting OPENAI_API_KEY env):
 powershell -File scripts/deploy_vercel.ps1
 ```
+
+## Deploying
+
+Going forward, deploy with:
+
+```bash
+powershell -File scripts/deploy_vercel.ps1
+```
+
+This builds the Flutter web release (proxy mode, no key in bundle) and uploads the prebuilt `build/web` + `api/` to Vercel. Git auto-deploy is disabled (`vercel.json` → `git.deploymentEnabled.main = false`) because `build/web` is gitignored — a Git deploy would ship no static output and 404.
 
 ## Tests
 

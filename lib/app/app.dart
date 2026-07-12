@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../presentation/auth/auth_controller.dart';
+import '../presentation/auth/login_screen.dart';
 import '../presentation/drafts/review_drafts_screen.dart';
 import '../presentation/inventory/inventory_screen.dart';
 import '../presentation/providers.dart';
@@ -16,7 +18,26 @@ class IntellygentWarehouseApp extends StatelessWidget {
       title: 'Intellygent Warehouse',
       theme: AppTheme.light(),
       debugShowCheckedModeBanner: false,
-      home: const HomeShell(),
+      home: const _AuthGate(),
+    );
+  }
+}
+
+/// Shows the password gate when APP_PASSWORD is configured and no valid
+/// session exists; otherwise the app. When ungated, resolves to [HomeShell]
+/// immediately.
+class _AuthGate extends ConsumerWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    return auth.when(
+      data: (unlocked) => unlocked ? const HomeShell() : const LoginScreen(),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => const LoginScreen(),
     );
   }
 }
