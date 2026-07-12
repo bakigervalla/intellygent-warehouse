@@ -18,6 +18,7 @@ import '../domain/usecases/approve_draft.dart';
 import '../domain/usecases/create_drafts_from_scan.dart';
 import '../domain/usecases/recognize_scan.dart';
 import '../domain/usecases/reject_draft.dart';
+import 'setup/llm_settings_controller.dart';
 
 /// Composition root. Swapping the local store for a remote one, or the AI
 /// vendor, means overriding a provider here — nothing else changes.
@@ -45,7 +46,12 @@ final draftRepositoryProvider = Provider<DraftRepository>(
 );
 
 final aiRecognitionServiceProvider = Provider<AiRecognitionService>(
-  (ref) => OpenAiRecognitionService(),
+  (ref) {
+    // Rebuilds whenever the user changes provider/model in Setup. Falls back
+    // to the app default until the persisted settings finish loading.
+    final settings = ref.watch(llmSettingsProvider).value;
+    return OpenAiRecognitionService(settings: settings);
+  },
 );
 
 final recognizeScanProvider = Provider<RecognizeScan>(

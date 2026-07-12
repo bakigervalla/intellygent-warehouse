@@ -7,6 +7,7 @@ import '../presentation/drafts/review_drafts_screen.dart';
 import '../presentation/inventory/inventory_screen.dart';
 import '../presentation/providers.dart';
 import '../presentation/scan/scan_screen.dart';
+import '../presentation/setup/setup_screen.dart';
 import '../presentation/theme/app_theme.dart';
 
 class IntellygentWarehouseApp extends StatelessWidget {
@@ -42,8 +43,8 @@ class _AuthGate extends ConsumerWidget {
   }
 }
 
-/// Bottom-nav shell: Scan / Drafts / Inventory. The Drafts tab carries a
-/// live badge with the pending count.
+/// Bottom-nav shell: Scan / Drafts / Inventory / Setup. The Drafts tab carries
+/// a live badge with the pending count.
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -63,6 +64,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ScanScreen(onDraftsCreated: () => setState(() => _index = 1)),
       const ReviewDraftsScreen(),
       InventoryScreen(onOpenDrafts: () => setState(() => _index = 1)),
+      const SetupScreen(),
     ];
 
     return Scaffold(
@@ -93,6 +95,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             icon: Icon(Icons.inventory_2_outlined),
             selectedIcon: Icon(Icons.inventory_2),
             label: 'Inventory',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Setup',
           ),
         ],
       ),

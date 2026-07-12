@@ -24,7 +24,12 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const NVIDIA_MODEL =
   process.env.NVIDIA_MODEL || 'meta/llama-3.2-90b-vision-instruct';
 
-function selectedProvider() {
+// The client (Setup tab) sends its chosen vendor as `x-llm-provider`. When
+// present and valid it wins; otherwise the server's LLM_PROVIDER env default
+// applies. There is still NO cross-provider fallback — exactly one is called.
+function selectedProvider(req) {
+  const fromClient = String(req.headers['x-llm-provider'] || '').toLowerCase();
+  if (fromClient === 'nvidia' || fromClient === 'openai') return fromClient;
   return (process.env.LLM_PROVIDER || 'nvidia').toLowerCase();
 }
 
@@ -45,7 +50,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const provider = selectedProvider();
+  const provider = selectedProvider(req);
   const requested = req.body;
 
   // NVIDIA NIM (LLM_PROVIDER=nvidia). Rewrite the model to a NVIDIA vision
@@ -60,7 +65,12 @@ export default async function handler(req, res) {
     }
     try {
       const { response_format, ...rest } = requested ?? {};
-      const nvidiaBody = { ...rest, model: NVIDIA_MODEL };
+      // Honour the client's chosen NVIDIA model (Setup tab). NIM model ids are
+      // namespaced ("vendor/model"); anything else (e.g. a stray OpenAI id) is
+      // ignored in favour of the safe default.
+      const clientModel = typeof rest.model === 'string' ? rest.model : '';
+      const model = clientModel.includes('/') ? clientModel : NVIDIA_MODEL;
+      const nvidiaBody = { ...rest, model };
       const upstream = await callUpstream(NVIDIA_URL, key, nvidiaBody);
       const text = await upstream.text();
       res

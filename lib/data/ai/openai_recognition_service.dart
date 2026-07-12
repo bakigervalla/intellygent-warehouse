@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/config/llm_settings.dart';
 import '../../core/errors/app_exception.dart';
 import '../../domain/entities/recognized_item.dart';
 import '../../domain/entities/scan_image.dart';
@@ -15,8 +16,12 @@ import 'openai_response_parser.dart';
 /// endpoint and expects a strict JSON object back (see
 /// [OpenAiResponseParser] for the contract).
 class OpenAiRecognitionService implements AiRecognitionService {
-  OpenAiRecognitionService({Dio? dio, OpenAiResponseParser? parser})
-      : _parser = parser ?? const OpenAiResponseParser(),
+  OpenAiRecognitionService({
+    Dio? dio,
+    OpenAiResponseParser? parser,
+    LlmSettings? settings,
+  })  : _parser = parser ?? const OpenAiResponseParser(),
+        _settings = settings ?? LlmSettings.initial(),
         _dio = dio ??
             Dio(
               BaseOptions(
@@ -35,6 +40,9 @@ class OpenAiRecognitionService implements AiRecognitionService {
             options.headers['Authorization'] =
                 'Bearer ${AppConfig.openAiApiKey}';
           }
+          // Tell the proxy which vendor to route to. Direct-to-OpenAI calls
+          // ignore this unknown header harmlessly.
+          options.headers['x-llm-provider'] = _settings.provider.wireName;
           handler.next(options);
         },
       ),
@@ -55,6 +63,7 @@ class OpenAiRecognitionService implements AiRecognitionService {
 
   final Dio _dio;
   final OpenAiResponseParser _parser;
+  final LlmSettings _settings;
 
   @override
   Future<List<RecognizedItem>> recognizeItems(List<ScanImage> images) async {
@@ -79,7 +88,7 @@ class OpenAiRecognitionService implements AiRecognitionService {
   }
 
   Map<String, dynamic> _buildRequestBody(List<ScanImage> images) => {
-        'model': AppConfig.openAiModel,
+        'model': _settings.model,
         'response_format': {'type': 'json_object'},
         'messages': [
           {'role': 'system', 'content': _systemPrompt},
